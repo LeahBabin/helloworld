@@ -1,0 +1,41 @@
+# libraries needed
+library(maps)
+library(sp)
+library(maptools)
+library(Matrix)
+library(dplyr)
+library(ape)
+library(spdep)
+
+# working directory 
+setwd("/Users/leahbabin/Library/Mobile Documents/com~apple~CloudDocs/Deer")
+# data used
+lyme<- read.csv("lyme2yearlag.csv")
+
+# code for map out New Jersey by counties 
+map("county", "New Jersey")
+nj1<-map("county", "New Jersey", plot = F, fill = T, col = "transparent")
+IDs<- sapply(strsplit(nj1$names, ":"), function(x) x[1])
+nj<- map2SpatialPolygons(nj1, IDs = IDs,
+                         proj4string = CRS("+proj=longlat +datum=WGS84"))
+neigh<- poly2nb(nj)
+bin1<- nb2listw(neigh)
+neigh
+bin1
+
+lyme1997<- filter(lyme, yr == 1997) %>% arrange(.,county)
+# testing for moran's I
+moran(lyme1997$hk, bin1, length(neigh), Szero(bin1))$I
+moran(lyme1997$Deer, bin1, length(neigh), Szero(bin1))$I
+moran(lyme1997$ir3, bin1, length(neigh), Szero(bin1))$I
+moran(lyme1997$upl, bin1, length(neigh), Szero(bin1))$I
+lyme1997<-mutate(lyme1997, pop= ppsm * sqmi) # creating population varibale 
+moran(lyme1997$pop, bin1, length(neigh), Szero(bin1))$I
+
+lee(lyme1997$ir3, lyme1997$Deer, bin1, length(neigh), Szero(bin1))
+
+lm(ir3 ~ Deer, data = lyme1997) %>% summary(.)
+stsls(ir3 ~ Deer + upl, data = lyme1997, bin1) %>% summary()
+# creating histograms
+hist(log(lyme$Deer))
+hist(log(lyme$ir3))
