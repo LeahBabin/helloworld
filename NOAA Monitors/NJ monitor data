@@ -1,0 +1,124 @@
+
+# libraries needed
+library(dplyr)
+library(maps)
+library(mgcv)
+library(lubridate)
+library(tidyr)
+library(RColorBrewer)
+library(splancs)
+
+# wd and NOAA data used
+setwd("/Users/leahbabin/Library/Mobile Documents/com~apple~CloudDocs/GRA work")
+x <- read.csv("noaa899001.csv", na.strings = -9999, stringsAsFactors = F)
+
+colnames(x) <- tolower(colnames(x))
+
+# convert dates to numeric dates
+x <- mutate(x, date = as.Date(as.character(date), format = "%Y%m%d"))
+# obtain summer months
+x <- mutate(x, month = month(date))
+x <- filter(x, date <= as.Date("2014-12-31"))
+x <- filter(x, month %in% c(6, 7, 8))
+
+
+# explore which stations are in each county
+
+# get NJ county boundaries
+map("county", "New Jersey")
+njc <- map("county", "New Jersey", plot = F)
+
+# finding lat and long for all monitors in NJ
+njmat <- x[, c("station", "station_name",  "longitude", "latitude")]
+njmat <- njmat[-which(duplicated(njmat)), ]
+njmat <- filter(njmat, longitude != "unknown")
+njmat <- mutate(njmat, longitude = as.numeric(longitude), latitude = as.numeric(latitude))
+njmat1 <- njmat
+njmat <- njmat[, c("longitude", "latitude")]
+colnames(njmat)<- c("x", "y")
+njmat <- as.matrix(njmat)
+
+# find out which in each county
+mons <- list()
+ # code 
+getpoly <- function(j, njc, njmon, plot = T) {
+  
+  map1 <- map("county", njc$names[j], plot = F)
+  map1 <- cbind(map1$x, map1$y)
+  nas <- which(is.na(map1[, 1]))
+  map2 <- map1[(1 : (nas[1] - 1)), ]
+  k1 <- nas[1] - 1
+  for(i in 1 : (length(nas))) {
+    
+    k <- nas[i] + 1
+    l <- ifelse(i < length(nas), nas[i + 1] - 1, nrow(map1))
+    # fix possible misordering of 1
+    if(i == 1) {
+      if((all.equal(map1[1, ], map1[k, ])[1] == T) | 
+         (all.equal(map1[1, ], map1[l, ])[1] == T)) {
+        map2 <- map1[rev(1 : (nas[1] - 1)), ]
+        
+      }
+    }
+    
+    if(all.equal(map2[k1, ], map1[k, ])[1] == T) {
+      ords <- seq(k, l)
+    } else {
+      ords <- rev(seq(k, l))
+    }
+    
+    new <- map1[ords, ]
+    
+    map2 <- rbind(map2, new)
+    k1 <- nrow(map2)
+    
+  }
+  colnames(map1) <- c("x", "y")
+  i1 <- inout(njmat, map2)
+  cols <- rep(brewer.pal(8, "Dark2"), 100)
+  if(plot) {
+    par(mar = c(5, 4, 4, 2))
+    map1 <- map("county", njc$name[j], plot = T)
+    polygon(map2, col = "grey90")
+    points(jitter(njmat[i1, ], amount = 0.008), col = cols)
+    if(length(which(i1 == T)) == 1) {
+      points(njmat[i1, 1], njmat[i1, 2])
+    }
+    points(njmat[-i1, 1], njmat[-i1, 2], col = "grey50", pch = "+")
+  }
+  i1
+}
+
+j <- 21
+i1 <- getpoly(j, njc, njmat, plot = T)
+
+m <- 1
+mmat <- matrix(nrow = 60, ncol = 2)
+counts <- "count1"
+for(j in 1 : length(njc$names)) {
+  i1 <- getpoly(j, njc, njmat, plot = F)
+  if(length(which(i1 == T)) == 0) {
+    print(j)
+    counts <- c(counts, njc$names[j])
+  }
+  
+  mons[[njc$names[j]]] <- unique(njmat1$station[i1])
+  l1 <- length(unique(njmat1$station[i1]))
+  if(l1 > 0) {
+    mmat[m : (m + l1 - 1), ] <- cbind(rep(njc$names[j], l1), unique(njmat1$station[i1]))
+    m <- m + l1
+  }
+}
+counts <- counts[-1]
+
+
+g2 <- c(agrep("harrison", njmat1$station_name, ignore.case = T), agrep("jersey city", njmat1$station_name, ignore.case = T))
+mons[[9]] <- unique(njmat1[g2, "station"])
+hud <- cbind(rep(njc$name[9], 2), mons[[9]])
+mmat <- rbind(mmat, hud)
+colnames(mmat) <- c("county", "station")
+mmat <- data.frame(mmat) # data frame of the station names in each county
+
+
+length(which(duplicated(unlist(mons))))
+sapply(mons, length) # number of monitors in each county
