@@ -1,0 +1,49 @@
+# libraries needed
+library(devtools)
+library(easyGgplot2)
+library(dplyr)
+library(ape)
+library(sp)
+library(maptools)
+library(Matrix)
+library(spdep)
+
+# wd and data used 
+setwd("/Users/leahbabin/Library/Mobile Documents/com~apple~CloudDocs/Deer")
+lyme <- read.csv("lyme2yearlag.csv")
+lyme<- mutate(lyme, LD= ir3 * ppsm * sqmi)
+
+# historgrams
+ggplot(lyme, aes(Deer)) + geom_histogram() + facet_wrap(~ yr) # deer count over the years 97-13
+ggplot(lyme, aes(ir3)) + geom_histogram() + facet_wrap(~ yr) # LD count over the years 97-13
+ggplot(lyme, aes(Deer)) + geom_histogram() + facet_wrap(~ county) # deer count for NJ counties
+ggplot(lyme, aes(ir3)) + geom_histogram() + facet_wrap(~ county) # LD count for NJ counties
+
+# scatterplots for Deer and LD 
+ggplot(lyme, aes(x = Deer, y = ir3)) + geom_point() + 
+  geom_smooth() + facet_wrap(~ yr, scales = "free", ncol = 5) # over the years 97-13
+ggplot(lyme, aes(x = Deer, y = ir3)) + geom_point() + 
+  geom_smooth() + facet_wrap(~ county, scales = "free", ncol = 5) # for counties
+  
+  ## looping for LDeer so I can plot it
+lyme1997 <- filter(lyme, yr == 1997)
+years<- seq(1997,2013)
+LDeer<- data.frame(matrix(nrow=length(years), ncol=4))
+LDeer[,1]<-years
+for(i in 1 : length(years)) {
+  lyme1997<-filter(lyme, yr == years[i])
+  lm1 <- lm(ir3 ~ Deer, data = lyme1997)
+  summary(lm1)$coef
+  ci <- confint(lm1)
+  betas <- c(lm1$coef[2], ci[2, ])
+  
+  LDeer[i,2]<- c(betas[1])
+  LDeer[i,3]<- c(betas[2])
+  LDeer[i,4]<- c(betas[3])
+
+}
+colnames(LDeer)<- c("Year", "Deer", "LB", "UB") # LB= lower bound CI UB= upper bound CI
+
+## plot for CI
+ggplot(data = LDeer, aes(x = years, y = Deer)) + 
+  geom_pointrange(aes(ymin = LDeer[, 3], ymax = LDeer[, 4]))
