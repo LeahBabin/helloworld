@@ -1,0 +1,23 @@
+# working directory
+setwd("/Users/leahbabin/Library/Mobile Documents/com~apple~CloudDocs/Deer")
+# data used
+x <- read.csv("lyme2yearlag.csv")
+# library needed
+library(dplyr)
+
+# loop code
+years <- seq(1997,2013)
+df <- data.frame(matrix(nrow = length(years), ncol = 6))
+df[,1]<-years
+for(i in 1 : length(years)) {
+  print(i)
+  x97<-filter(x, yr == years[i])
+  x97<-mutate(x97, LD = ir3 * ppsm * sqmi)
+  df[i,2] <- print(sum(x97$LD)/10000)
+  df[i,3] <- print(sum(x97$Deer))
+  df[i,4] <- print(cor(x97$hk, x97$ir3))
+  x97<-mutate(x97, pop = ppsm * sqmi)
+  df[i,5] <- print(sum(x97$pop)/sum(x97$sqmi))
+  x97<-mutate(x97, pov = upl * pop)
+  df[i,6] <- print(sum(x97$pov)/sum(x97$pop))
+}
