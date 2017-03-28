@@ -1,0 +1,29 @@
+# libraries needed
+library(maps)
+library(sp)
+library(maptools)
+library(Matrix)
+library(dplyr)
+library(ape)
+library(spdep)
+
+setwd("/Users/leahbabin/Library/Mobile Documents/com~apple~CloudDocs/Deer")
+lyme<- read.csv("lyme2yearlag.csv")
+
+# Loop code for Moran's I
+years <- seq(1997,2013)
+df <- data.frame(matrix(nrow = length(years), ncol = 4))
+df[,1]<- years
+for(i in 1 : length(years)) {
+  lyme1997<-filter(lyme, yr == years[i])
+  df[i,2] <- moran(lyme1997$hk, bin1, length(neigh), Szero(bin1))$I
+  
+  df[i,3]<- moran(lyme1997$Deer, bin1, length(neigh), Szero(bin1))$I
+  
+  df[i,4]<- moran(lyme1997$ir3, bin1, length(neigh), Szero(bin1))$I
+  
+}
+
+
+moran.test(lyme1997$Deer, bin1)
+colnames(df)<- c("Year", "hk", "deer", "ir3")
