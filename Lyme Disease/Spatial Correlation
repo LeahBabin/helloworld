@@ -1,0 +1,54 @@
+## spatial correlation for LD and Deer
+lyme<- mutate(lyme, LD= ir3 * ppsm * sqmi)
+years<- seq(1997,2013)
+newdf<- data.frame(matrix(nrow=length(years), ncol=3))
+newdf[,1]<-years
+for(i in 1 : length(years)) {
+  lyme1997<-filter(lyme, yr == years[i])
+  newdf[i,2]<- moran(lyme1997$Deer, bin1, length(neigh), Szero(bin1))$I
+  
+  newdf[i,3]<- moran(lyme1997$LD, bin1, length(neigh), Szero(bin1))$I
+  
+}
+ moran.test(lyme1997$Deer, bin1)
+ moran.test(lyme1997$LD, bin1)
+ colnames(newdf)<- c("Years", "Deer", "LD")
+ 
+ ## table 1
+ lyme<- group_by(lyme, county)
+ sumfun<-function (x, rd=2) {
+   mn1<- mean(x, na.rm = T) %>% round(., rd)
+   min1<- min(x, na.rm = T) %>% round(., rd)
+   max1<- max(x, na.rm = T) %>% round(., rd)
+   out<- paste0(mn1,"(",min1,",", max1,")")
+   out
+ }
+ lyme<-mutate(lyme, pop= ppsm * sqmi)
+ sumtab<- summarise(lyme, LD = sumfun(ir3), Deer = sumfun(hk), Pov = sumfun(upl), sqmi = mean(sqmi), pop = sumfun(pop))
+
+## table 2
+years<- seq(1997,2013)
+lyme<- group_by(lyme, yr)
+sumfun2<- function (x, rd=4) {
+  mrD<- moran.test(lyme$Deer, bin1)
+  mrLD<- moran.test(lyme$LD, bin1)
+  out<- paste0(mrD, mrLD)
+  out
+}
+sumtab2<- summarise(lyme, LD = sumfun(ir3), Deer = sumfun(hk))
+
+map("county", "New Jersey")
+nj1<-map("county", "New Jersey", plot = F, fill = T, col = "transparent")
+IDs<- sapply(strsplit(nj1$names, ":"), function(x) x[1])
+nj<- map2SpatialPolygons(nj1, IDs = IDs,
+                         proj4string = CRS("+proj=longlat +datum=WGS84"))
+neigh<- poly2nb(nj)
+bin1<- nb2listw(neigh)
+neigh
+bin1
+lyme<- filter(lyme, yr == 1997) %>% arrange(.,county)
+moran(lyme$Deer, bin1, length(neigh), Szero(bin1))$I
+moran(lyme$ir3, bin1, length(neigh), Szero(bin1))$I
+
+moran.test(lyme$Deer, bin1)
+moran.test(lyme$LD, bin1)$estimate[1]
