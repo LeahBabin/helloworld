@@ -1,0 +1,19 @@
+#libraries needed
+library(dplyr)
+library(maps)
+library(mgcv)
+library(lubridate)
+library(tidyr)
+library(RColorBrewer)
+library(splancs)
+
+#get working directory 
+x <- read.csv("noaa899001.csv", na.strings = -9999, stringsAsFactors = F)
+
+colnames(x) <- tolower(colnames(x))
+
+# convert date to da
+x <- mutate(x, date = as.Date(as.character(date), format = "%Y%m%d"))
+
+
+
